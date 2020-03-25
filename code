@@ -1,0 +1,105 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jun 29 20:29:56 2017
+
+@author: AML
+"""
+
+import itertools
+import pandas as pd
+import numpy as np
+from sklearn.feature_extraction import DictVectorizer
+from sklearn import preprocessing
+from sklearn import cross_validation
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier
+from sklearn import metrics
+from sklearn.preprocessing import OneHotEncoder
+
+
+def plot_confusion_matrix(cm, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, cm[i, j],
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+
+
+column = [u'meanangle',u'meancur',  u'meanhorvel',u'meanvervel',u'meanvel',u'meanacc',
+          u'meanangvel',u't',u's', u'Str', u'user']
+# 读取并打乱数据
+data = pd.read_excel(r'C:\Users\pc\Desktop\pycharm data\input\RFSBL3.xlsx')
+data.columns = column
+
+# 对类别进行标记
+la = preprocessing.LabelEncoder()
+la.fit(data[u'user'].tolist())
+label_fea = la.transform(data[u'user'].tolist())
+del data[u'user']
+
+# 对非数值型属性进行编码
+for name in column[:-1]:
+    num = 0
+    data_1 = data[name].unique()
+    for val in data_1:
+        data[name][data[name] == val] = num
+        num += 1
+
+
+# 对数值型特征编码
+lst = data.values.tolist()
+enc = OneHotEncoder()
+enc.fit(lst)
+train_fea = enc.transform(lst).toarray()
+
+# #划分数据集
+X_train, X_test, Y_train, Y_test = cross_validation.train_test_split(train_fea, label_fea, test_size=0.3,
+                                                                     random_state=42, stratify=label_fea)
+#
+# #随机森林预测
+RF = RandomForestClassifier()
+RF.fit(X_train, Y_train)
+test_31 = RF.predict(X_test)
+print("Accuracy :%.2f" % metrics.accuracy_score(Y_test, test_31))  # 测试分数
+# #混淆矩阵
+classes = [u'1', u'2',u'3', u'4',u'5', u'6',u'7', u'8',u'9', u'10',u'11', u'12',u'13', u'14',
+           u'15', u'16',u'17', u'18',]
+c_m = metrics.confusion_matrix(Y_test, test_31)
+print("混淆矩阵：")
+print(c_m)
+plt.figure(1)
+plot_confusion_matrix(c_m, classes)
+plt.savefig(r'C:\Users\pc\Desktop\pycharm data\input\hh.png')
+plt.show()
+
+
+from sklearn.metrics import classification_report
+y_true,y_pred=Y_test,test_31
+
+print(classification_report(y_true, y_pred))
